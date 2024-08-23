@@ -127,7 +127,7 @@ catch {
     write-host $APIResponse
 }
 try {
-    Invoke-WebRequest -uri ($SonicOSURL + "/api/sonicos/config-mode") -Method POST -ContentType 'application/json; charset=utf-8' -Headers $Headers
+    $APIResponse = Invoke-WebRequest -uri ($SonicOSURL + "/api/sonicos/config-mode") -Method POST -ContentType 'application/json; charset=utf-8' -Headers $Headers
 }
 catch {
     write-error "An error occurred: $_"
