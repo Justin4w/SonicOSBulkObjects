@@ -1,0 +1,11 @@
+Name,Zone,IPAddress
+Test Host 1,LAN,192.168.222.10/32
+Test Host 2,LAN,192.168.222.11/32
+Test Host 3,LAN,192.168.222.12/32
+Test Host 4,WAN,12.12.12.1/32
+Test Host 5,WAN,12.12.12.2/32
+Test Net 1,LAN,192.168.10.0/24
+Test Net 2,LAN,10.11.0.0/16
+Test Net 3,LAN,192.168.20.0/24
+Test Net 4,WAN,12.13.14.128/28
+Test Net 5,WAN,12.14.15.0/29
