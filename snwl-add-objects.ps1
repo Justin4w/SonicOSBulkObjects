@@ -81,12 +81,46 @@ $SonicOSAuthBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetB
     }
 #End of def function to validate CIDR Notation
 
+# Define function to test if a string is a valid FQDN
+                <#  NOTES  
+                    The regex below validates a FQDN but will never match a CIDR Range
+                    ^: Matches the start of the string.
+                    (?!-): Negative lookahead to ensure the string doesn't start with a hyphen.
+                    [A-Za-z0-9-]{1,63}: Matches 1 to 63 alphanumeric characters or hyphens.
+                    (?<!-): Negative lookbehind to ensure the label doesn't end with a hyphen.
+                    (\.[A-Za-z0-9-]{1,63})*: Matches zero or more occurrences of a dot followed by another valid label.
+                    \.?: Optionally allows a trailing dot.
+                    (?<!/): Ensures the string doesn't end with a forward slash.
+                    (?!/\d+): Ensures the string isn't followed by a forward slash and digits (which would make it a CIDR notation).
+                    $: Matches the end of the string.
+                    
+                    This explicitly prevents matching strings that end with a slash followed by numbers, which is the format used for CIDR notation.
+                    For example:
+                    
+                    "example.com" - Will match
+                    "sub.example.com." - will match
+                    "192.168.1.1" - Will match (could be a valid FQDN)
+                    "192.168.1.1/24" - Will not match
+                    "example.com/32" - Will not match
+                    END OF NOTES
+                    #>  
+
+      function Test-FQDN {
+          param (
+              [string]$Domain
+          )
+          $FQDNRegex = "^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*\.?(?<!/)(?!/\d+)$"
+          return $Domain -match $FQDNRegex
+      }
+#End of def function to test if a string is a valid fqdn
+
+
 
 
 ### Begin Main
 
 #Grab address object data from CSV file.
-#$PathToCSV = "c:\mcallen\jsontest\test-import.csv"
+#$PathToCSV = "c:\scripts\jsontest\test-import.csv"
 $PathToCSV = Read-Host "Enter path to CSV file"
 try {
     $AddressObjects = Import-CSV $PathToCSV
@@ -103,13 +137,39 @@ $AOArray = @()
 # Loop over the content of the CSV. Identify the network prefix length. Determine if object is host or network. Build the appropriate objects using the CSV data.
 foreach ($AddressObject in $AddressObjects) {   
     $ObjIP = $AddressObject.IPAddress
-    $SlashIndex = $ObjIP.IndexOf("/")
+      
+      # Test if the object is an FQDN
+      if (Test-FQDN $ObjIP) {
+          write-host $AddressObject.Name "("$ObjIP")" "is an FQDN."
+          # Build key-value pairs for FQDN object
+          $fqdnValue = [PSCustomObject]@{ 
+              domain = $ObjIP
+          }
+          $ipv4Value = [PSCustomObject]@{
+              name = $AddressObject.Name
+              zone = $AddressObject.Zone
+              fqdn = $fqdnValue
+          }
+          $address_objectsValue = [PSCustomObject]@{
+              ipv4 = $ipv4Value
+          }
+          # Append nested object collection to the array for storage.
+          $AOArray += $address_objectsValue
+      }
+      else {
+          $SlashIndex = $ObjIP.IndexOf("/")
+          if ($SlashIndex -eq -1) {
+              write-host "Invalid IP address format for $($AddressObject.Name): $ObjIP. Skipping this entry."
+              continue
+          }  
+    #OK FQDN Test done and its not an FQDN but it is probably a valid CIDR range since the slashindex exists
+    
     $PrefixLength = [int]$ObjIP.substring($SlashIndex + 1)
     $RawIP = $ObjIP.substring(0,$SlashIndex)
 
     # Validate CIDR notation
     if (-not (Test-CIDRAddress $ObjIP)) {
-        Write-Error "Invalid CIDR notation for $($AddressObject.Name): $ObjIP"
+        Write-Error "Invalid CIDR notation for $($AddressObject.Name): $ObjIP. Skipping this entry."
         continue
     }
 
