@@ -15,7 +15,7 @@ $SonicOSAuthString = $SonicOSUserName + ':' + $SonicOSPass
 $SonicOSAuthBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($SonicOSAuthString))
 
 #Grab address object data from CSV file.
-#$PathToCSV = "c:\mcallen\jsontest\test-import.csv"
+#$PathToCSV = "c:\scripts\jsontest\test-import.csv"
 $PathToCSV = Read-Host "Enter path to CSV file"
 try {
     $AddressObjects = Import-CSV $PathToCSV
