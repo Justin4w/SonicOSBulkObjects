@@ -14,6 +14,77 @@ $SonicOSPass = Read-Host "Password"
 $SonicOSAuthString = $SonicOSUserName + ':' + $SonicOSPass
 $SonicOSAuthBase64 = [Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($SonicOSAuthString))
 
+# Define function to validate part of CIDR notation
+                <#  NOTES  
+                    The regex below validates an IPv4 address.
+                        $ipRegex = "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+                    ^ : Start of the string
+                    (?: ... ) : Non-capturing group
+                        25[0-5] : Matches numbers 250-255
+                        | : OR
+                        2[0-4][0-9] : Matches numbers 200-249
+                        | : OR
+                        [01]?[0-9][0-9]? : Matches numbers 0-199
+                    \. : Matches a dot
+                    {3} : The previous group is repeated exactly 3 times
+                    ( ... ) : The entire pattern is repeated for all 4 octets of an IPv4 address
+                    $ : End of the string
+                    
+                    Rules
+                    - Each octet can be a number from 0 to 255
+                    - There must be exactly 4 octets
+                    - Octets are separated by dots
+                    - No leading zeros are allowed (like 01 or 001)
+                    - The regex ensures the entire string matches this pattern
+                    
+                    This regex will match valid IPv4 addresses like:
+                    - 192.168.1.1
+                    - 10.0.0.0
+                    - 255.255.255.255
+                    
+                    Will not match invalid ones like:
+                    - 256.1.2.3 (256 is too high for an octet)
+                    - 1.2.3 (missing an octet)
+                    - 01.1.1.1 (leading zero)
+                    - 1.2.3.4.5 (too many octets)
+                      END OF NOTES
+                    #>  
+
+    function Test-CIDRAddress {
+        param (
+            [Parameter(Mandatory=$true)]
+            [string]$CIDRAddress
+        )
+    
+        $parts = $CIDRAddress -split '/'
+
+        if ($parts.Count -ne 2) {
+            Write-Output "Invalid CIDR format. Should be in the form 'IP/prefix'"
+            return $false
+        }
+    
+        $ip = $parts[0]
+        $prefix = $parts[1]
+    
+        $ipRegex = "^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+        if ($ip -notmatch $ipRegex) {
+            Write-Output "Invalid IP address"
+            return $false
+        }
+    
+        if (-not ($prefix -as [int]) -or [int]$prefix -lt 0 -or [int]$prefix -gt 32) {
+            Write-Output "Invalid prefix. Should be a number between 0 and 32"
+            return $false
+        }
+    
+        return $true
+    }
+#End of def function to validate CIDR Notation
+
+
+
+### Begin Main
+
 #Grab address object data from CSV file.
 #$PathToCSV = "c:\mcallen\jsontest\test-import.csv"
 $PathToCSV = Read-Host "Enter path to CSV file"
@@ -35,6 +106,12 @@ foreach ($AddressObject in $AddressObjects) {
     $SlashIndex = $ObjIP.IndexOf("/")
     $PrefixLength = [int]$ObjIP.substring($SlashIndex + 1)
     $RawIP = $ObjIP.substring(0,$SlashIndex)
+
+    # Validate CIDR notation
+    if (-not (Test-CIDRAddress $ObjIP)) {
+        Write-Error "Invalid CIDR notation for $($AddressObject.Name): $ObjIP"
+        continue
+    }
 
     # Test if the prefix length is exactly 32, indicating this is a single host.
     if ($PrefixLength -eq 32) {
