@@ -3,6 +3,12 @@
 ####  Name values and Zone values are strings.  IPAddress values should be in CIDR notation, even single hosts (/32) 
 ####  This only works with basic authentication (username/password). 
 
+####### AT THE MOMENT THIS CODE WILL NOT WORK IF THERE ARE FQDNS PRESENT IN THE IPADDRESS FIELD, THERE IS A FUNCTION TO TEST, VALIDATE, AND RECORD
+####### AN ADDRESSOBJECT FOR A FQDN, BUT THE JSON STRUCTURE FOR THE FQDN API POST IS UNHANDLED AND UNTESTED.
+####### TESTING AND API REFERENCE REGUIRED TO VALIDATE
+
+
+
 $ErrorActionPreference = 'Stop'
 $Timestamp = get-date -Format "yyyyMMdd_HHmmss"
 
